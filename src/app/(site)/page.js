@@ -1,4 +1,3 @@
-// src/app/(site)/page.js
 import { Suspense } from 'react';
 import Hero from '@/components/home/Hero';
 import FeaturedProductsSection from '@/components/home/FeaturedProductsSection';
@@ -18,7 +17,7 @@ function formatMoney(amount, currency) {
   }
 }
 
-// Async Server Component INSIDE Suspense (same file, no extra file needed)
+// Async Server Component INSIDE Suspense
 async function FeaturedProductsRSC() {
   const data = await getFeaturedProductsCached({ first: 4 });
   const nodes = data?.products?.nodes ?? [];
