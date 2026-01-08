@@ -51,7 +51,7 @@ export function Navbar() {
           <div className='hidden items-center gap-1 md:flex'>
             <NavLink href='/'>Home</NavLink>
             <NavLink href='/products'>Products</NavLink>
-            <NavLink href='/recipes'>Recipes</NavLink>
+            {/* <NavLink href='/recipes'>Recipes</NavLink> */}
           </div>
         </div>
 
@@ -105,7 +105,7 @@ export function Navbar() {
         <div className='flex gap-2'>
           <NavLink href='/'>Home</NavLink>
           <NavLink href='/products'>Products</NavLink>
-          <NavLink href='/recipes'>Recipes</NavLink>
+          {/* <NavLink href='/recipes'>Recipes</NavLink> */}
         </div>
       </div>
     </header>
