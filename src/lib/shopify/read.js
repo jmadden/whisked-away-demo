@@ -1,7 +1,8 @@
 // src/lib/shopify/read.js
 import { shopifyFetch } from '@/lib/shopify/client';
 import { PRODUCTS_QUERY, PRODUCT_BY_HANDLE_QUERY } from '@/lib/shopify/queries';
-import { kvGetJSON, kvSetJSON, kvDel } from '@/lib/cache/kv';
+import { kvGetJSON, kvSetJSON } from '@/lib/cache/kv';
+import { getCacheVersion } from '@/lib/cache/versions';
 
 const TTL_PRODUCTS_SECONDS = 60;
 const TTL_PRODUCT_SECONDS = 300;
@@ -43,7 +44,9 @@ export async function getProductsCached({
   sortKey = null,
   reverse = null,
 } = {}) {
-  const cacheKey = buildProductsCacheKey({
+  const productsVersion = await getCacheVersion('products');
+
+  const baseKey = buildProductsCacheKey({
     first,
     after,
     last,
@@ -52,6 +55,9 @@ export async function getProductsCached({
     sortKey,
     reverse,
   });
+
+  // ✅ versioned cache key
+  const cacheKey = `v=${productsVersion}:${baseKey}`;
 
   const t0 = Date.now();
   const cached = await kvGetJSON(cacheKey);
@@ -68,8 +74,6 @@ export async function getProductsCached({
   });
 
   const nodes = data?.products?.nodes ?? [];
-
-  // Cache the full `data` object so pageInfo/cursors survive
   if (nodes.length > 0) {
     await kvSetJSON(cacheKey, data, { ttlSeconds: TTL_PRODUCTS_SECONDS });
   }
@@ -104,7 +108,10 @@ export async function getProductByHandleCached(handle) {
 }
 
 export async function getFeaturedProductsCached({ first = 4 } = {}) {
-  const cacheKey = FEATURED_KEY(first);
+  const featuredVersion = await getCacheVersion('featured');
+
+  // ✅ versioned featured key
+  const cacheKey = `v=${featuredVersion}:${FEATURED_KEY(first)}`;
 
   const t0 = Date.now();
   const cached = await kvGetJSON(cacheKey);
@@ -121,14 +128,9 @@ export async function getFeaturedProductsCached({ first = 4 } = {}) {
   });
 
   const nodes = data?.products?.nodes ?? [];
-
   if (nodes.length > 0) {
     await kvSetJSON(cacheKey, data, { ttlSeconds: TTL_FEATURED_SECONDS });
   }
 
   return data;
-}
-
-export async function invalidateFeaturedProductsCache({ first = 4 } = {}) {
-  await kvDel(FEATURED_KEY(first));
 }

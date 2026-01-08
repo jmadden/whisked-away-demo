@@ -1,7 +1,8 @@
+// src/app/api/webhooks/shopify/route.js
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { revalidateTag } from 'next/cache';
-import { invalidateFeaturedProductsCache } from '@/lib/shopify/read';
+import { bumpCacheVersion } from '@/lib/cache/versions';
+import { kvDel } from '@/lib/cache/kv';
 
 function verifyShopifyHmac({ rawBody, hmacHeader, secret }) {
   const digest = crypto
@@ -9,11 +10,9 @@ function verifyShopifyHmac({ rawBody, hmacHeader, secret }) {
     .update(rawBody, 'utf8')
     .digest('base64');
 
-  // timingSafeEqual throws if buffer lengths differ
   const a = Buffer.from(digest);
   const b = Buffer.from(hmacHeader || '');
   if (a.length !== b.length) return false;
-
   return crypto.timingSafeEqual(a, b);
 }
 
@@ -21,18 +20,36 @@ export async function POST(req) {
   const rawBody = await req.text();
 
   const hmac = req.headers.get('x-shopify-hmac-sha256') || '';
+  const topic = req.headers.get('x-shopify-topic') || 'unknown';
   const secret = process.env.SHOPIFY_WEBHOOK_SECRET;
 
-  if (!secret)
+  if (!secret) {
     return new NextResponse('Missing SHOPIFY_WEBHOOK_SECRET', { status: 500 });
+  }
 
   const ok = verifyShopifyHmac({ rawBody, hmacHeader: hmac, secret });
-  if (!ok)
+  if (!ok) {
     return new NextResponse('Invalid webhook signature', { status: 401 });
+  }
 
-  // Any product change could add/remove the "featured" tag, so invalidate the list.
-  await invalidateFeaturedProductsCache({ first: 4 });
-  revalidateTag('products:featured');
+  let payload = null;
+  try {
+    payload = rawBody ? JSON.parse(rawBody) : null;
+  } catch {
+    payload = null;
+  }
 
-  return NextResponse.json({ ok: true });
+  // ✅ Invalidate all product-list caches instantly (paging/filter/sort)
+  await bumpCacheVersion('products');
+
+  // ✅ Invalidate featured list caches instantly
+  await bumpCacheVersion('featured');
+
+  // ✅ Invalidate the specific product detail cache (if we have a handle)
+  const handle = payload?.handle;
+  if (typeof handle === 'string' && handle.length) {
+    await kvDel(`shopify:product:handle=${handle}`);
+  }
+
+  return NextResponse.json({ ok: true, topic });
 }
