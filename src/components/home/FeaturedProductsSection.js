@@ -1,40 +1,43 @@
-// components/home/FeaturedProductsSection.js
-import Link from 'next/link';
-import { cacheLife, cacheTag } from 'next/cache';
-import { getFeaturedProductsCached } from '@/lib/shopify/read'; // adjust import
-import ProductCard from '@/components/shop/ProductCard'; // adjust import
+// src/components/home/FeaturedProductsSection.js
+import ProductCard from '@/components/shop/ProductCard';
 
-export default async function FeaturedProductsSection() {
-  'use cache: remote';
-  cacheLife('max');
-  cacheTag('products:featured');
+function normalizeProducts(input) {
+  if (Array.isArray(input)) return input;
 
-  const products = await getFeaturedProductsCached({
-    first: 4,
-    query: 'tag:featured',
-  });
+  // If caller passed the whole Shopify `data` object:
+  if (input?.products?.nodes && Array.isArray(input.products.nodes)) {
+    return input.products.nodes;
+  }
 
-  // if (!products?.length) return null;
+  // If caller passed the connection directly:
+  if (input?.nodes && Array.isArray(input.nodes)) {
+    return input.nodes;
+  }
+
+  return [];
+}
+
+export default function FeaturedProductsSection({ products }) {
+  const list = normalizeProducts(products);
+
+  if (!list.length) {
+    return (
+      <div className='card p-6'>
+        <div className='text-sm font-medium text-gray-900'>
+          Featured products
+        </div>
+        <p className='muted mt-2'>No featured products found yet.</p>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <div className='flex items-baseline justify-between border-b-2 border-black pb-2 mb-6'>
-        <h2 className='text-2xl font-bold uppercase tracking-tight text-black'>
-          Featured Products
-        </h2>
-        <Link
-          href='/products'
-          className='text-sm font-medium text-black hover:underline'
-        >
-          View all &rarr;
-        </Link>
-      </div>
-
-      <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-8'>
-        {products.map(p => (
+    <section>
+      <div className='grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
+        {list.map(p => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }
