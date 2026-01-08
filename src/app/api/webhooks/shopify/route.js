@@ -61,8 +61,8 @@ export async function POST(req) {
   }
 
   // ✅ Invalidate Next.js cache tags
-  revalidateTag('shopify:products');
-  revalidateTag('shopify:featured');
+  revalidateTag('shopify:products', 'max');
+  revalidateTag('shopify:featured', 'max');
 
   return NextResponse.json({ ok: true });
 }
