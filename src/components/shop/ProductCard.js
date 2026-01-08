@@ -34,16 +34,36 @@ export default function ProductCard({ product }) {
 
       <div className='p-4 pt-0'>
         {product.firstVariantId ? (
-          <form action={addToCart}>
+          <form action={addToCart} className='mt-3 space-y-3'>
             <input
               type='hidden'
               name='merchandiseId'
               value={product.firstVariantId}
             />
-            <input type='hidden' name='quantity' value='1' />
+
+            <div className='flex items-center justify-between gap-3'>
+              <label
+                htmlFor={`qty-${product.handle}`}
+                className='text-sm text-gray-700'
+              >
+                Qty
+              </label>
+
+              <input
+                id={`qty-${product.handle}`}
+                name='quantity'
+                type='number'
+                min={1}
+                max={99}
+                defaultValue={1}
+                inputMode='numeric'
+                className='w-24 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-gray-300 focus:ring-2 focus:ring-gray-200'
+              />
+            </div>
+
             <button
               type='submit'
-              className='mt-3 w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
+              className='w-full rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800'
             >
               Add to cart
             </button>
