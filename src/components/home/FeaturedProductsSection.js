@@ -1,26 +1,34 @@
 // src/components/home/FeaturedProductsSection.js
 import ProductCard from '@/components/shop/ProductCard';
+import { getFeaturedProductsCached } from '@/lib/shopify/read';
 
-function normalizeProducts(input) {
-  if (Array.isArray(input)) return input;
-
-  // If caller passed the whole Shopify `data` object:
-  if (input?.products?.nodes && Array.isArray(input.products.nodes)) {
-    return input.products.nodes;
+function formatMoney(amount, currency) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) return '';
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: currency || 'USD',
+    }).format(n);
+  } catch {
+    return `${amount} ${currency || ''}`.trim();
   }
-
-  // If caller passed the connection directly:
-  if (input?.nodes && Array.isArray(input.nodes)) {
-    return input.nodes;
-  }
-
-  return [];
 }
 
-export default function FeaturedProductsSection({ products }) {
-  const list = normalizeProducts(products);
+export default async function FeaturedProductsSection() {
+  const data = await getFeaturedProductsCached({ first: 4 });
+  const nodes = data?.products?.nodes ?? [];
 
-  if (!list.length) {
+  const products = nodes.map(p => ({
+    ...p,
+    displayPrice: formatMoney(
+      p?.priceRange?.minVariantPrice?.amount,
+      p?.priceRange?.minVariantPrice?.currencyCode
+    ),
+    firstVariantId: p?.variants?.nodes?.[0]?.id || null,
+  }));
+
+  if (!products.length) {
     return (
       <div className='card p-6'>
         <div className='text-sm font-medium text-gray-900'>
@@ -32,12 +40,16 @@ export default function FeaturedProductsSection({ products }) {
   }
 
   return (
-    <section>
+    <div>
+      <div className='mb-4 flex items-end justify-between'>
+        <h2 className='text-xl font-semibold text-gray-900'>Featured</h2>
+      </div>
+
       <div className='grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'>
-        {list.map(p => (
+        {products.map(p => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
-    </section>
+    </div>
   );
 }
