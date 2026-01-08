@@ -3,11 +3,15 @@ import { shopifyFetch } from '@/lib/shopify/client';
 import { PRODUCTS_QUERY, PRODUCT_BY_HANDLE_QUERY } from '@/lib/shopify/queries';
 import { kvGetJSON, kvSetJSON, kvDel } from '@/lib/cache/kv';
 
-const FEATURED_KEY = first => `shopify:products:featured:first=${first}`;
-
 const TTL_PRODUCTS_SECONDS = 60;
 const TTL_PRODUCT_SECONDS = 300;
 const TTL_FEATURED_SECONDS = 60 * 60 * 24; // 24h
+
+const FEATURED_KEY = first => `shopify:products:featured:first=${first}`;
+
+function v(x, empty = 'NONE') {
+  return x === null || x === undefined || x === '' ? empty : String(x);
+}
 
 function buildProductsCacheKey({
   first,
@@ -18,12 +22,16 @@ function buildProductsCacheKey({
   sortKey,
   reverse,
 }) {
-  return (
-    `shopify:products:` +
-    `first=${first ?? ''}:after=${after ?? ''}:` +
-    `last=${last ?? ''}:before=${before ?? ''}:` +
-    `q=${query || ''}:sort=${sortKey || ''}:rev=${reverse ?? ''}`
-  );
+  return [
+    'shopify:products',
+    `first=${v(first)}`,
+    `after=${v(after)}`,
+    `last=${v(last)}`,
+    `before=${v(before)}`,
+    `q=${v(query, 'NONE')}`,
+    `sort=${v(sortKey, 'NONE')}`,
+    `rev=${v(reverse, 'NONE')}`,
+  ].join(':');
 }
 
 export async function getProductsCached({
@@ -45,31 +53,40 @@ export async function getProductsCached({
     reverse,
   });
 
+  const t0 = Date.now();
   const cached = await kvGetJSON(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('UPSTASH cache hit:', cacheKey, 'ms=', Date.now() - t0);
+    return cached;
+  }
+  console.log('UPSTASH cache miss:', cacheKey, 'ms=', Date.now() - t0);
 
-  // NOTE: shopifyFetch returns json.data (not { data: ... })
   const data = await shopifyFetch({
     query: PRODUCTS_QUERY,
     variables: { first, after, last, before, query, sortKey, reverse },
     cache: 'no-store',
   });
 
-  const products = data?.products?.nodes ?? [];
+  const nodes = data?.products?.nodes ?? [];
 
-  // ✅ Do not cache empty arrays
-  if (products.length > 0) {
-    await kvSetJSON(cacheKey, products, { ttlSeconds: TTL_PRODUCTS_SECONDS });
+  // Cache the full `data` object so pageInfo/cursors survive
+  if (nodes.length > 0) {
+    await kvSetJSON(cacheKey, data, { ttlSeconds: TTL_PRODUCTS_SECONDS });
   }
 
-  return products;
+  return data;
 }
 
 export async function getProductByHandleCached(handle) {
-  const cacheKey = `shopify:product:handle=${handle}`;
+  const cacheKey = `shopify:product:handle=${v(handle)}`;
 
+  const t0 = Date.now();
   const cached = await kvGetJSON(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('UPSTASH cache hit:', cacheKey, 'ms=', Date.now() - t0);
+    return cached;
+  }
+  console.log('UPSTASH cache miss:', cacheKey, 'ms=', Date.now() - t0);
 
   const data = await shopifyFetch({
     query: PRODUCT_BY_HANDLE_QUERY,
@@ -79,7 +96,6 @@ export async function getProductByHandleCached(handle) {
 
   const product = data?.productByHandle ?? null;
 
-  // ✅ Do not cache null
   if (product) {
     await kvSetJSON(cacheKey, product, { ttlSeconds: TTL_PRODUCT_SECONDS });
   }
@@ -90,8 +106,13 @@ export async function getProductByHandleCached(handle) {
 export async function getFeaturedProductsCached({ first = 4 } = {}) {
   const cacheKey = FEATURED_KEY(first);
 
+  const t0 = Date.now();
   const cached = await kvGetJSON(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.log('UPSTASH cache hit:', cacheKey, 'ms=', Date.now() - t0);
+    return cached;
+  }
+  console.log('UPSTASH cache miss:', cacheKey, 'ms=', Date.now() - t0);
 
   const data = await shopifyFetch({
     query: PRODUCTS_QUERY,
@@ -99,14 +120,13 @@ export async function getFeaturedProductsCached({ first = 4 } = {}) {
     cache: 'no-store',
   });
 
-  const products = data?.products?.nodes ?? [];
+  const nodes = data?.products?.nodes ?? [];
 
-  // ✅ Do not cache empty arrays for long TTL caches
-  if (products.length > 0) {
-    await kvSetJSON(cacheKey, products, { ttlSeconds: TTL_FEATURED_SECONDS });
+  if (nodes.length > 0) {
+    await kvSetJSON(cacheKey, data, { ttlSeconds: TTL_FEATURED_SECONDS });
   }
 
-  return products;
+  return data;
 }
 
 export async function invalidateFeaturedProductsCache({ first = 4 } = {}) {

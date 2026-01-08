@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -121,5 +121,38 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+  /* Make interactive elements feel interactive */
+  a,
+  button,
+  [role='button'],
+  input[type='submit'],
+  input[type='button'] {
+    @apply cursor-pointer;
+  }
+
+  button:disabled,
+  input:disabled {
+    @apply cursor-not-allowed;
+  }
+
+  a:hover {
+    @apply text-gray-700;
+  }
+
+  button:hover:enabled,
+  [role='button']:hover,
+  input[type='submit']:hover:enabled,
+  input[type='button']:hover:enabled {
+    @apply brightness-95;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  [role='button']:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline-none ring-2 ring-gray-300 ring-offset-2 ring-offset-white;
   }
 }
