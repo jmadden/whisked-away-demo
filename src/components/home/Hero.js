@@ -9,7 +9,7 @@ export default function Hero() {
         <h1 className='text-4xl font-bold tracking-tight text-black'>
           Whisked Away
         </h1>
-        <p className='mt-3 max-w-2xl text-lg text-black/70'>
+        <p className='mt-3 max-w-3xl text-lg text-black/70'>
           Baking supplies, recipes, and the gear that makes your kitchen feel
           like a tiny science lab.
         </p>
