@@ -1,4 +1,5 @@
 // src/components/home/FeaturedProductsSection.js
+'use cache';
 import ProductCard from '@/components/shop/ProductCard';
 import { getFeaturedProductsCached } from '@/lib/shopify/read';
 
