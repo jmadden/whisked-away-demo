@@ -46,6 +46,16 @@ function buildShopifyQuery({ q, type, inStock }) {
   return parts.length ? parts.join(' AND ') : null;
 }
 
+function chip(label, value) {
+  if (!value) return null;
+  return (
+    <span className='inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs text-gray-700'>
+      <span className='font-medium text-gray-900'>{label}</span>
+      <span className='text-gray-600'>{value}</span>
+    </span>
+  );
+}
+
 export default async function ProductsPageContent({ searchParams }) {
   const sp = await searchParams;
 
@@ -77,10 +87,6 @@ export default async function ProductsPageContent({ searchParams }) {
     reverse,
   });
 
-  // Support multiple possible shapes:
-  // A) { products: { nodes, pageInfo } }
-  // B) { nodes, pageInfo } (connection directly)
-  // C) [ ...products ] (array)
   const conn = Array.isArray(result)
     ? null
     : result?.products
@@ -124,67 +130,131 @@ export default async function ProductsPageContent({ searchParams }) {
         }).toString()}`
       : null;
 
+  const anyFilters = Boolean(q || type || inStock || sort);
+
   return (
     <>
-      <div className='mt-6 flex flex-col gap-6 md:flex-row md:items-end md:justify-between'>
-        <div>
-          <p className='muted mt-2'>Filter Whisked Away’s baking supplies.</p>
+      <div className='mt-6 flex flex-col gap-6'>
+        <div className='flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between'>
+          <div>
+            <h2 className='text-2xl font-semibold tracking-tight text-gray-900'>
+              Products
+            </h2>
+            <p className='muted mt-2'>
+              Find tools and supplies for your next bake.
+            </p>
+          </div>
+
+          {anyFilters ? (
+            <div className='flex flex-wrap gap-2'>
+              {chip('Search', q)}
+              {chip('Type', type)}
+              {chip('Stock', inStock ? 'In stock' : '')}
+              {chip(
+                'Sort',
+                sort
+                  ? {
+                      'title-asc': 'Title A–Z',
+                      'title-desc': 'Title Z–A',
+                      'price-asc': 'Price Low–High',
+                      'price-desc': 'Price High–Low',
+                      newest: 'Newest',
+                    }[sort] || sort
+                  : ''
+              )}
+            </div>
+          ) : null}
         </div>
 
-        <form
-          method='GET'
-          action='/products'
-          className='card flex flex-col gap-3 p-4 md:flex-row md:items-end'
-        >
-          <div className='min-w-[220px]'>
-            <label className='text-sm font-medium text-gray-900'>Search</label>
-            <input
-              name='q'
-              defaultValue={q}
-              className='input mt-2'
-              placeholder='whisk, flour, pan…'
-            />
+        <form method='GET' action='/products' className='card p-4 sm:p-5'>
+          {/* Top row: Search + action buttons */}
+          <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+            <div className='flex-1'>
+              <label className='text-medium font-medium text-gray-900 pr-5 '>
+                Search
+              </label>
+              <input
+                name='q'
+                defaultValue={q}
+                className='input mt-2'
+                placeholder='Search: whisk, flour, pan…'
+              />
+            </div>
+
+            <div className='flex gap-2 sm:pt-6'>
+              <button
+                className='btn btn-primary w-full sm:w-auto'
+                type='submit'
+              >
+                Apply
+              </button>
+              <Link
+                className='btn btn-secondary w-full sm:w-auto'
+                href='/products'
+              >
+                Reset
+              </Link>
+            </div>
           </div>
 
-          <div className='min-w-[200px]'>
-            <label className='text-sm font-medium text-gray-900'>Type</label>
-            <input
-              name='type'
-              defaultValue={type}
-              className='input mt-2'
-              placeholder='e.g. "Tools"'
-            />
+          {/* Divider */}
+          <div className='mt-4 border-t border-gray-200' />
+
+          {/* Advanced row */}
+          <div className='mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+            <div>
+              <label className='text-md font-medium text-gray-900 pr-5'>
+                Type
+              </label>
+              <input
+                name='type'
+                defaultValue={type}
+                className='input mt-2'
+                placeholder='Tools, Ingredients, …'
+              />
+              <p className='mt-2 text-md text-gray-500'>
+                Matches Shopify <span className='font-mono'>product_type</span>
+              </p>
+            </div>
+
+            <div>
+              <label className='text-sm font-medium text-gray-900'>Sort</label>
+              <select name='sort' defaultValue={sort} className='input mt-2'>
+                <option value=''>Default</option>
+                <option value='title-asc'>Title (A–Z)</option>
+                <option value='title-desc'>Title (Z–A)</option>
+                <option value='price-asc'>Price (Low–High)</option>
+                <option value='price-desc'>Price (High–Low)</option>
+                <option value='newest'>Newest</option>
+              </select>
+              <p className='mt-2 text-xs text-gray-500'>
+                Sorts the Shopify connection
+              </p>
+            </div>
+
+            <div className='flex items-end'>
+              <label className='flex w-full items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm text-gray-700'>
+                <input
+                  type='checkbox'
+                  name='inStock'
+                  value='1'
+                  defaultChecked={inStock}
+                  className='h-4 w-4'
+                />
+                In stock only
+              </label>
+            </div>
+
+            <div className='flex items-end'>
+              <div className='w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3'>
+                <div className='text-xs font-medium text-gray-900'>Tip</div>
+                <div className='mt-1 text-xs text-gray-600'>
+                  Try <span className='font-mono'>type=Tools</span> or search{' '}
+                  <span className='font-mono'>whisk</span>
+                </div>
+              </div>
+            </div>
           </div>
-
-          <div className='min-w-[180px]'>
-            <label className='text-sm font-medium text-gray-900'>Sort</label>
-            <select name='sort' defaultValue={sort} className='input mt-2'>
-              <option value=''>Default</option>
-              <option value='title-asc'>Title (A–Z)</option>
-              <option value='title-desc'>Title (Z–A)</option>
-              <option value='price-asc'>Price (Low–High)</option>
-              <option value='price-desc'>Price (High–Low)</option>
-              <option value='newest'>Newest</option>
-            </select>
-          </div>
-
-          <label className='mt-2 flex items-center gap-2 text-sm text-gray-700 md:mt-0'>
-            <input
-              type='checkbox'
-              name='inStock'
-              value='1'
-              defaultChecked={inStock}
-            />
-            In stock only
-          </label>
-
-          <button className='btn btn-primary md:ml-2' type='submit'>
-            Apply
-          </button>
-
-          <Link className='btn btn-secondary' href='/products'>
-            Reset
-          </Link>
         </form>
       </div>
 
@@ -192,21 +262,31 @@ export default async function ProductsPageContent({ searchParams }) {
         <ProductGrid products={products} />
       </div>
 
-      <div className='mt-10 flex items-center justify-center gap-3 text-sm'>
+      <div className='mt-12 flex items-center justify-center gap-4 pb-10'>
         {prevHref ? (
-          <Link className='btn btn-secondary' href={prevHref}>
-            Previous
+          <Link
+            href={prevHref}
+            className='inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 hover:shadow-md active:bg-gray-100'
+          >
+            ← Previous
           </Link>
         ) : (
-          <span className='text-gray-400'>Previous</span>
+          <span className='inline-flex cursor-not-allowed items-center justify-center rounded-2xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-400 shadow-sm opacity-60'>
+            ← Previous
+          </span>
         )}
 
         {nextHref ? (
-          <Link className='btn btn-secondary' href={nextHref}>
-            Next
+          <Link
+            href={nextHref}
+            className='inline-flex items-center justify-center rounded-2xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-900 shadow-sm transition hover:bg-gray-50 hover:shadow-md active:bg-gray-100'
+          >
+            Next →
           </Link>
         ) : (
-          <span className='text-gray-400'>Next</span>
+          <span className='inline-flex cursor-not-allowed items-center justify-center rounded-2xl border border-gray-200 bg-white px-8 py-4 text-base font-semibold text-gray-400 shadow-sm opacity-60'>
+            Next →
+          </span>
         )}
       </div>
     </>
