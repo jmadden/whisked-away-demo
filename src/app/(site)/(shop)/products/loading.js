@@ -33,7 +33,7 @@ export default function LoadingProducts() {
             key={i}
             className='overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm'
           >
-            <Skeleton className='aspect-[4/3] w-full' />
+            <Skeleton className='aspect-4/3 w-full' />
             <div className='p-4'>
               <Skeleton className='h-4 w-3/4' />
               <Skeleton className='mt-3 h-4 w-1/3' />

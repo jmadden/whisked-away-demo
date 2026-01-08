@@ -1,7 +1,8 @@
-// src/app/api/shopify/route.js (or wherever yours lives)
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
+
+export const runtime = 'nodejs'; // keep Node crypto happy
 
 function verifyShopifyHmac({ rawBody, hmacHeader, secret }) {
   const digest = crypto
@@ -27,12 +28,13 @@ export async function POST(req) {
   }
 
   const ok = verifyShopifyHmac({ rawBody, hmacHeader: hmac, secret });
-  if (!ok)
+  if (!ok) {
     return new NextResponse('Invalid webhook signature', { status: 401 });
+  }
 
-  // Invalidate caches for next visit (stale-while-revalidate)
-  revalidateTag('shopify:products', 'max');
-  revalidateTag('shopify:featured', 'max');
+  // ✅ invalidate tags
+  revalidateTag('shopify:products');
+  revalidateTag('shopify:featured');
 
   return NextResponse.json({ ok: true });
 }
